@@ -20,7 +20,6 @@ class Solver:
         self.customers = m.customers
         self.depot = m.allNodes[0]
         self.distanceMatrix = m.dist_matrix
-        self.tn_per_km_matrix = m.tn_per_km_matrix
         self.capacity = m.capacity
         self.sol = None
         self.bestSolution = None
@@ -28,7 +27,7 @@ class Solver:
     def solve(self):
         self.SetRoutedFlagToFalseForAllCustomers()
         self.Clarke_n_Wright() #need to change, we're not implementing Clarke & Wright
-        self.ReportSolution(self.sol)
+        #self.ReportSolution(self.sol)
         return self.sol
 
     def SetRoutedFlagToFalseForAllCustomers(self):
@@ -92,7 +91,7 @@ class Solver:
             self.sol.cost -= sav.score
             cst = self.CalculateTotalCost(self.sol)
 
-            print(cst, self.sol.cost)
+            #print(cst, self.sol.cost)
             a = 0
         a = 0
 
