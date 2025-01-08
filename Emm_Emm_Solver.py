@@ -14,23 +14,21 @@ class Saving:
 # Addition of classes for Local Research
 class RelocationMove(object):
     def __init__(self):
-        # self.originRoutePosition = None
-        # self.targetRoutePosition = None
-        # self.originNodePosition = None
-        # self.targetNodePosition = None
-        # self.costChangeOriginRt = None
-        # self.costChangeTargetRt = None
+        self.originRoutePosition = None
+        self.targetRoutePosition = None
+        self.originNodePosition = None
+        self.targetNodePosition = None
+        self.costChangeOriginRt = None
+        self.costChangeTargetRt = None
         self.moveCost = None
-        self.oldRoutes = []
-        self.newRoutes = []
 
     def Initialize(self):
-        # self.originRoutePosition = None
-        # self.targetRoutePosition = None
-        # self.originNodePosition = None
-        # self.targetNodePosition = None
-        # self.costChangeOriginRt = None
-        # self.costChangeTargetRt = None
+        self.originRoutePosition = None
+        self.targetRoutePosition = None
+        self.originNodePosition = None
+        self.targetNodePosition = None
+        self.costChangeOriginRt = None
+        self.costChangeTargetRt = None
         
         self.moveCost = - 10 ** 9
 
@@ -88,7 +86,7 @@ class Emm_Emm_Solver:
         self.allNodes = m.allNodes
         self.customers = m.customers
         self.depot = m.allNodes[0]
-        self.distanceMatrix = m.distanceMatrix
+        self.distanceMatrix = m.dist_matrix
         self.capacity = m.capacity
         self.empty_vehicle_weight = m.empty_vehicle_weight
         self.sol = None
@@ -238,16 +236,15 @@ class Emm_Emm_Solver:
         while terminationCondition is False:
 
             self.InitializeOperators(rm, sm, top)
-            SolDrawer.draw(localSearchIterator, self.sol, self.allNodes)
+            #SolDrawer.draw(localSearchIterator, self.sol, self.allNodes)
 
             # Relocations
             if operator == 0:
                 self.FindBestRelocationMove(rm)
-                if len(rm.oldRoutes) > 0:
-                    if rm.moveCost > 0:
-                        self.ApplyRelocationMove(rm)
-                    else:
-                        terminationCondition = True
+                if rm.moveCost > 0:
+                    self.ApplyRelocationMove(rm)
+                else:
+                    terminationCondition = True
             # Swaps
             elif operator == 1:
                 self.FindBestSwapMove(sm)
@@ -291,6 +288,7 @@ class Emm_Emm_Solver:
         return cloned
 
     def FindBestRelocationMove(self, rm):
+        diff = []
         for originRouteIndex in range(0, len(self.sol.routes)):
             rt1:Route = self.sol.routes[originRouteIndex]
             # for originNodeIndex in range(1, len(rt1.sequenceOfNodes) - 1):
@@ -324,45 +322,48 @@ class Emm_Emm_Solver:
                         if originRouteIndex == targetRouteIndex :
                             oldcost = rt1.cost
                             rtcopy = rt1.copy()
-                            bcopy = rtcopy.sequenceOfNodes.pop(originNodeIndex) 
-                            rtcopy.sequenceOfNodes.insert(targetNodeIndex + 1, bcopy)
+                            bcopy = rtcopy.sequenceOfNodes.pop(originNodeIndex)
+                            if (originNodeIndex < targetNodeIndex): 
+                                rtcopy.sequenceOfNodes.insert(targetNodeIndex, bcopy)
+                            else:
+                                rtcopy.sequenceOfNodes.insert(targetNodeIndex + 1, bcopy) 
                             rtcopy.cost, rtcopy.load = self.calculate_route_details(rtcopy.sequenceOfNodes)
                             newcost = rtcopy.cost
-                            # originRtCostChange = oldcost - newcost
-                            # targetRtCostChange = originRtCostChange 
+                            originRtCostChange = oldcost - newcost
+                            targetRtCostChange = originRtCostChange 
                         else:   
-                            rt1oldcost = rt1.cost
-                            rt2oldcost = rt2.cost
-                            oldcost = rt1oldcost + rt2oldcost
-                            rt1copy = rt1.copy()
-                            rt2copy = rt2.copy()
-                            bcopy = rt1copy.sequenceOfNodes.pop(originNodeIndex) 
-                            rt2copy.sequenceOfNodes.insert(targetNodeIndex + 1, bcopy)
-                            rt1copy.cost, rt1copy.load = self.calculate_route_details(rt1copy.sequenceOfNodes)
-                            rt1newcost = rt1copy.cost
-                            rt2copy.cost, rt2copy.load = self.calculate_route_details(rt2copy.sequenceOfNodes)
-                            rt2newcost = rt2copy.cost
-                            newcost = rt1newcost + rt2newcost
-                            originRtCostChange = rt1oldcost - rt1newcost
-                            targetRtCostChange = rt2oldcost - rt2newcost
+                            # rt1oldcost = rt1.cost
+                            # rt2oldcost = rt2.cost
+                            # oldcost = rt1oldcost + rt2oldcost
+                            # rt1copy = rt1.copy()
+                            # rt2copy = rt2.copy()
+                            # bcopy = rt1copy.sequenceOfNodes.pop(originNodeIndex) 
+                            # rt2copy.sequenceOfNodes.insert(targetNodeIndex + 1, bcopy)
+                            # rt1copy.cost, rt1copy.load = self.calculate_route_details(rt1copy.sequenceOfNodes)
+                            # rt1newcost = rt1copy.cost
+                            # rt2copy.cost, rt2copy.load = self.calculate_route_details(rt2copy.sequenceOfNodes)
+                            # rt2newcost = rt2copy.cost
+                            # newcost = rt1newcost + rt2newcost
+                            originRtCostChange, targetRtCostChange = self.calculate_alternative_cost(rt1, rt2, originNodeIndex, targetNodeIndex)
+                            # altcost = originRtCostChange + targetRtCostChange
+                            # difference = oldcost - newcost - altcost
+                            # difference = round(difference, 10)
+                            # diff.append(difference)
+                            # print('Relocating Node ' + str(rt1.sequenceOfNodes[originNodeIndex].ID) + ' at ' + str (rt2.sequenceOfNodes[targetNodeIndex].ID))
+                            # print('For Origin Route: Actual Cost = ' + str(rt1oldcost - rt1newcost) + ' Alt Cost = ' + str(originRtCostChange))
+                            # print('For Target Route: Actual Cost = ' + str(rt2oldcost - rt2newcost) + ' Alt Cost = ' + str(targetRtCostChange))
+                            # print('Actual Cost = ' + str(oldcost - newcost) + ' Alt Cost = ' + str(altcost))
+                            # print('Difference = ' + str(oldcost - newcost - altcost))
                             # originRtCostChange = self.distanceMatrix[A.ID][C.ID] - self.distanceMatrix[A.ID][B.ID] - self.distanceMatrix[B.ID][C.ID]
                             # targetRtCostChange = self.distanceMatrix[F.ID][B.ID] + self.distanceMatrix[B.ID][G.ID] - self.distanceMatrix[F.ID][G.ID]
-
-                        moveCost = oldcost - newcost
+                        if originRouteIndex != targetRouteIndex:                            
+                            moveCost = originRtCostChange + targetRtCostChange
+                        else:
+                            moveCost = originRtCostChange
                         
                         if (moveCost > rm.moveCost):
-                            oldlist= []
-                            newlist =[]
-                            if originRouteIndex == targetRouteIndex :
-                                oldlist.append(rt1)
-                                newlist.append(rtcopy)
-                            else:
-                                oldlist.append(rt1)
-                                oldlist.append(rt2)
-                                newlist.append(rt1copy)
-                                newlist.append(rt2copy)
-                                
-                            self.StoreBestRelocationMove(oldlist, newlist, moveCost, rm)
+                            self.StoreBestRelocationMove(originRouteIndex, originNodeIndex, targetRouteIndex, 
+                                    targetNodeIndex, originRtCostChange, targetRtCostChange, moveCost, rm)
                                 
     def calculate_route_details(self, nodes_sequence):
         tot_dem = sum(n.demand for n in nodes_sequence)
@@ -374,7 +375,54 @@ class Emm_Emm_Solver:
             tn_km += self.distanceMatrix[from_node.ID][to_node.ID] * tot_load
             tot_load -= to_node.demand
         return tn_km , tot_dem
+    
+    def calculate_alternative_cost(self, originRoute, targetRoute, originNodeIndex, targetNodeIndex):
+        originRtCostChange = 0
+        targetRtCostChange = 0
+        originNode = originRoute.sequenceOfNodes[originNodeIndex]
+        targetNode = targetRoute.sequenceOfNodes[targetNodeIndex]
+        #OriginRtCostChange    
+        sum_routes = 0
+        for i in range(0, originNodeIndex):
+            n1 = originRoute.sequenceOfNodes[i]
+            n2 = originRoute.sequenceOfNodes[i+1]
+            sum_routes += self.distanceMatrix[n1.ID][n2.ID]
+        originRtCostChange += sum_routes * originNode.demand
 
+        if originNodeIndex != len(originRoute.sequenceOfNodes) - 1:
+            A = originRoute.sequenceOfNodes[originNodeIndex - 1]
+            B = originRoute.sequenceOfNodes[originNodeIndex]
+            C = originRoute.sequenceOfNodes[originNodeIndex + 1]
+            A_B = self.distanceMatrix[A.ID][B.ID]
+            B_C = self.distanceMatrix[B.ID][C.ID]
+            A_C = self.distanceMatrix[A.ID][C.ID]
+            sum_demands = self.empty_vehicle_weight
+            for i in range (originNodeIndex + 1, len(originRoute.sequenceOfNodes)):
+                n1 = originRoute.sequenceOfNodes[i]
+                sum_demands += n1.demand
+            originRtCostChange += (A_B + B_C - A_C) * sum_demands
+
+        #TargetRtCostChange
+        sum_routes = 0
+        for i in range (0, targetNodeIndex):
+            n1 = targetRoute.sequenceOfNodes[i]
+            n2 = targetRoute.sequenceOfNodes[i+1]
+            sum_routes += self.distanceMatrix[n1.ID][n2.ID]
+        sum_routes += self.distanceMatrix[targetNode.ID][originNode.ID]
+        targetRtCostChange += -1*sum_routes*originNode.demand
+
+        if targetNodeIndex != len(targetRoute.sequenceOfNodes) - 1:
+            F = targetRoute.sequenceOfNodes[targetNodeIndex]
+            B = originRoute.sequenceOfNodes[originNodeIndex]
+            G = targetRoute.sequenceOfNodes[targetNodeIndex + 1]
+            F_B = self.distanceMatrix[F.ID][B.ID]
+            B_G = self.distanceMatrix[B.ID][G.ID]
+            F_G = self.distanceMatrix[F.ID][G.ID]
+            sum_demands = self.empty_vehicle_weight
+            for i in range(targetNodeIndex + 1, len(targetRoute.sequenceOfNodes)):
+                sum_demands += targetRoute.sequenceOfNodes[i].demand
+            targetRtCostChange += (F_G - F_B - B_G)*sum_demands   
+        return originRtCostChange, targetRtCostChange                                     
 
     def FindBestSwapMove(self, sm):
         for firstRouteIndex in range(0, len(self.sol.routes)):
@@ -446,18 +494,28 @@ class Emm_Emm_Solver:
 
     def ApplyRelocationMove(self, rm: RelocationMove):
 
-        oldCost = self.sol.cost
+        oldCost = self.CalculateTotalCost(self.sol)
 
+        originRt = self.sol.routes[rm.originRoutePosition]
+        targetRt = self.sol.routes[rm.targetRoutePosition]
 
-        if len(rm.oldRoutes) == 1:
-            self.sol.routes.remove(rm.oldRoutes[0])
-            self.sol.routes.append(rm.newRoutes[0])
+        B = originRt.sequenceOfNodes[rm.originNodePosition]
+
+        if originRt == targetRt:
+            del originRt.sequenceOfNodes[rm.originNodePosition]
+            if (rm.originNodePosition < rm.targetNodePosition):
+                targetRt.sequenceOfNodes.insert(rm.targetNodePosition, B)
+            else:
+                targetRt.sequenceOfNodes.insert(rm.targetNodePosition + 1, B)
+
+            originRt.cost -= rm.moveCost
         else:
-            self.sol.routes.remove(rm.oldRoutes[0])
-            self.sol.routes.remove(rm.oldRoutes[1])  
-            self.sol.routes.append(rm.newRoutes[0])
-            self.sol.routes.append(rm.newRoutes[1])
-        
+            del originRt.sequenceOfNodes[rm.originNodePosition]
+            targetRt.sequenceOfNodes.insert(rm.targetNodePosition + 1, B)
+            originRt.cost -= rm.costChangeOriginRt
+            targetRt.cost -= rm.costChangeTargetRt
+            originRt.load -= B.demand
+            targetRt.load += B.demand
 
         self.sol.cost -= rm.moveCost
 
@@ -544,15 +602,13 @@ class Emm_Emm_Solver:
 
         insCustomer.isRouted = True
 
-    def StoreBestRelocationMove(self, oldlist, newlist, moveCost, rm:RelocationMove):
-        # rm.originRoutePosition = originRouteIndex
-        # rm.originNodePosition = originNodeIndex
-        # rm.targetRoutePosition = targetRouteIndex
-        # rm.targetNodePosition = targetNodeIndex
-        # rm.costChangeOriginRt = originRtCostChange
-        # rm.costChangeTargetRt = targetRtCostChange
-        rm.oldRoutes = oldlist
-        rm.newRoutes = newlist
+    def StoreBestRelocationMove(self, originRouteIndex, originNodeIndex, targetRouteIndex, targetNodeIndex, originRtCostChange, targetRtCostChange, moveCost, rm:RelocationMove):
+        rm.originRoutePosition = originRouteIndex
+        rm.originNodePosition = originNodeIndex
+        rm.targetRoutePosition = targetRouteIndex
+        rm.targetNodePosition = targetNodeIndex
+        rm.costChangeOriginRt = originRtCostChange
+        rm.costChangeTargetRt = targetRtCostChange
         rm.moveCost = moveCost
 
     def StoreBestSwapMove(self, firstRouteIndex, secondRouteIndex, firstNodeIndex, secondNodeIndex, moveCost, costChangeFirstRoute, costChangeSecondRoute, sm):
@@ -701,7 +757,7 @@ class Emm_Emm_Solver:
             rtCost , rtLoad = self.calculate_route_details(rt.sequenceOfNodes)
             if abs(rtCost - rt.cost) > 0.0001:
                 print ('Route Cost problem')
-            if rtLoad != rt.load:
+            if abs(rtLoad - rt.load) > 0.0001:
                 print ('Route Load problem')
 
             totalSolCost += rt.cost
