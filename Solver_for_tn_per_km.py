@@ -1,5 +1,5 @@
 from VRP_Model import *
-from SolutionDrawer import *
+# from SolutionDrawer import *
 from sol_checker import *
 
 class Solution:

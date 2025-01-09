@@ -1,15 +1,10 @@
 from Model_Emm_Emm import *
-#from SolutionDrawer import *
+# from SolutionDrawer import *
+
 class Solution:
     def __init__(self):
         self.cost = 0.0
         self.routes = []
-
-class Saving:
-    def __init__(self, n1, n2, score):
-        self.n1 = n1
-        self.n2 = n2
-        self.score = score
 
 # Addition of classes for Local Research
 class RelocationMove(object):
@@ -79,9 +74,8 @@ class TwoOptMove(object):
         self.positionOfSecondNode = None
         self.moveCost = 10 ** 9
 
-
-
-class Emm_Emm_Solver:
+# Local Search 
+class LocalSolver():
     def __init__(self, m):
         self.allNodes = m.allNodes
         self.customers = m.customers
@@ -92,136 +86,13 @@ class Emm_Emm_Solver:
         self.sol = None
         self.bestSolution = None
 
-    def solve(self):
-        self.sol = self.create_initial_routes()
-        savings = self.calculate_savings()
-        savings.sort(key=lambda s: s.score, reverse=True)
-
-        for sav in savings:
-            n1 = sav.n1
-            n2 = sav.n2
-            rt1 = n1.route
-            rt2 = n2.route
-            old_cost = rt1.cost + rt2.cost
-
-            if not self.nodes_are_compatible(n1, n2):
-                continue
-            
-            pot_route = self.create_potential_route(n1, n2)
-            pot_route.cost, pot_route.load = self.calculate_route_details(pot_route.sequenceOfNodes)
-            new_cost = pot_route.cost
-
-            if old_cost > new_cost:
-                self.update_routes(rt1, rt2, pot_route)
-                pot_route_ID = []
-                for node in pot_route.sequenceOfNodes :
-                    pot_route_ID.append(node.ID)
-                #print('Created route ', pot_route_ID, 'with saving', old_cost - new_cost)
-        
-        self.ReportSolution(self.sol)
-        # self.LocalSearch(0)  # Βελτιστοποίηση της αρχικής λύσης
-        # self.ReportSolution(self.sol)
-        # self.transport_solution_to_txt()
-    
+    def LocalSolve(self, sol):
+        self.sol = sol
+        self.ReportSolution(sol)
+        self.LocalSearch(0)
+        self.ReportSolution(sol)
+        self.transport_solution_to_txt()
         return self.sol
-
-    def calculate_savings(self):    
-        savings = []
-        for n1 in self.customers:
-            for n2 in self.customers:
-                if n1 != n2:
-                    rt1 = n1.route
-                    rt2 = n2.route
-                    old_cost = rt1.cost + rt2.cost
-
-                    pot_route = self.create_potential_route(n1, n2)
-
-                    pot_route.cost, pot_route.load = self.calculate_route_details(pot_route.sequenceOfNodes)
-                    new_cost = pot_route.cost
-                    if new_cost < old_cost:
-                        score = old_cost - new_cost
-                        sav = Saving(n1, n2, score)
-                        savings.append(sav)
-        return savings
-
-    def create_initial_routes(self):
-        s = Solution()
-        for i in range(0, len(self.customers)):
-            n = self.customers[i]
-            rt = Route(self.depot, self.capacity)
-            n.route = rt
-            n.position_in_route = 1
-            rt.sequenceOfNodes.insert(1, n)
-            rt.cost, rt.load = self.calculate_route_details(rt.sequenceOfNodes)
-            s.routes.append(rt)
-            s.cost += rt.cost
-        return s
-    
-    def calculate_route_details(self, nodes_sequence):
-        tot_dem = sum(n.demand for n in nodes_sequence)
-        tot_load = self.empty_vehicle_weight + tot_dem
-        tn_km = 0
-        for i in range(len(nodes_sequence) - 1):
-            from_node = nodes_sequence[i]
-            to_node = nodes_sequence[i+1]
-            tn_km += self.distanceMatrix[from_node.ID][to_node.ID] * tot_load
-            tot_load -= to_node.demand
-        return tn_km, tot_dem
-    
-    def nodes_are_compatible(self, n1, n2):
-        if n1.route == n2.route:
-           return False
-        if n1.position_in_route != 1 and n1.position_in_route != len(n1.route.sequenceOfNodes) - 1:
-           return False
-        if n2.position_in_route != 1 and n2.position_in_route != len(n2.route.sequenceOfNodes) - 1:
-           return False
-        if n1.route.load + n2.route.load > self.capacity:
-            return False
-        return True
-    
-    def create_potential_route(self, n1, n2):
-        pos1 = n1.position_in_route
-        pos2 = n2.position_in_route
-        rt1 = n1.route.copy()
-        rt2 = n2.route.copy()
-        pot_route = n1.route.copy()
-        if pos1 == 1 and pos2 == 1:
-            pot_route.sequenceOfNodes[1:1] = rt2.sequenceOfNodes[len(rt2.sequenceOfNodes) - 1 : 0 : -1]
-            return pot_route
-        if pos1 == 1 and pos2 == len(rt2.sequenceOfNodes) - 1:
-            pot_route.sequenceOfNodes[1:1] = rt2.sequenceOfNodes[1:]
-            return pot_route
-        if pos1 == len(rt1.sequenceOfNodes) - 1 and pos2 == 1:
-            pot_route.sequenceOfNodes[len(pot_route.sequenceOfNodes) - 1:len(pot_route.sequenceOfNodes) - 1] = rt2.sequenceOfNodes[1:]
-            return pot_route
-        if pos1 == len(rt1.sequenceOfNodes) - 1 and pos2 == len(rt2.sequenceOfNodes) - 1:
-            pot_route.sequenceOfNodes[len(pot_route.sequenceOfNodes) - 1:len(pot_route.sequenceOfNodes) - 1] = rt2.sequenceOfNodes[len(rt2.sequenceOfNodes) - 1 : 0 : -1]
-            return pot_route
-        
-    def update_routes(self, rt1, rt2, pot_route):
-        self.sol.routes.remove(rt1)
-        self.sol.routes.remove(rt2)
-        self.sol.routes.append(pot_route)
-        self.sol.cost -= (rt1.cost + rt2.cost)
-        self.sol.cost += pot_route.cost
-        for i in range (1, len(pot_route.sequenceOfNodes)):
-            n = pot_route.sequenceOfNodes[i]
-            n.route = pot_route
-            n.position_in_route = i
-
-    def transport_solution_to_txt(self):
-        file = open('emm_emm_solution.txt', 'w')
-        file.write('Cost:\n')
-        file.write(str(self.sol.cost) + '\n')
-        file.write('Routes:\n')
-        file.write(str(len(self.sol.routes)) + '\n')
-        for rt in self.sol.routes:
-            file.write(str(rt.sequenceOfNodes[0].ID))
-            for i in range(1, len(rt.sequenceOfNodes)):
-                file.write(',' + str(rt.sequenceOfNodes[i].ID))
-            file.write('\n')          
-
-# Local Search 
 
     def LocalSearch(self, operator):
         self.bestSolution = self.cloneSolution(self.sol)
@@ -235,7 +106,7 @@ class Emm_Emm_Solver:
         while terminationCondition is False:
 
             self.InitializeOperators(rm, sm, top)
-#            SolDrawer.draw(localSearchIterator, self.sol, self.allNodes)
+            #SolDrawer.draw(localSearchIterator, self.sol, self.allNodes)
 
             # Relocations
             if operator == 0:
@@ -381,6 +252,7 @@ class Emm_Emm_Solver:
         originNode = originRoute.sequenceOfNodes[originNodeIndex]
         targetNode = targetRoute.sequenceOfNodes[targetNodeIndex]
         #OriginRtCostChange    
+        #Formula first part
         sum_routes = 0
         for i in range(0, originNodeIndex):
             n1 = originRoute.sequenceOfNodes[i]
@@ -388,6 +260,7 @@ class Emm_Emm_Solver:
             sum_routes += self.distanceMatrix[n1.ID][n2.ID]
         originRtCostChange += sum_routes * originNode.demand
 
+        #if origin is not last
         if originNodeIndex != len(originRoute.sequenceOfNodes) - 1:
             A = originRoute.sequenceOfNodes[originNodeIndex - 1]
             B = originRoute.sequenceOfNodes[originNodeIndex]
@@ -494,13 +367,15 @@ class Emm_Emm_Solver:
     def ApplyRelocationMove(self, rm: RelocationMove):
 
         oldCost = self.CalculateTotalCost(self.sol)
-
+        # print('Relocating node ' + str(rm.originNodePosition) + 
+        #       ' from Route ' + str(rm.originRoutePosition) + ' at ' + 
+        #       str(rm.targetNodePosition) + ' in route ' + str(rm.targetRoutePosition))
         originRt = self.sol.routes[rm.originRoutePosition]
         targetRt = self.sol.routes[rm.targetRoutePosition]
-
         B = originRt.sequenceOfNodes[rm.originNodePosition]
 
         if originRt == targetRt:
+            # print('Same Route Relocation')
             del originRt.sequenceOfNodes[rm.originNodePosition]
             if (rm.originNodePosition < rm.targetNodePosition):
                 targetRt.sequenceOfNodes.insert(rm.targetNodePosition, B)
@@ -509,6 +384,7 @@ class Emm_Emm_Solver:
 
             originRt.cost -= rm.moveCost
         else:
+            #print('Different Route Relocation')
             del originRt.sequenceOfNodes[rm.originNodePosition]
             targetRt.sequenceOfNodes.insert(rm.targetNodePosition + 1, B)
             originRt.cost -= rm.costChangeOriginRt
@@ -557,49 +433,6 @@ class Emm_Emm_Solver:
                 print(rt.sequenceOfNodes[j].ID, end=' ')
             print(rt.cost)
         print (self.sol.cost)
-
-    def GetLastOpenRoute(self):
-        if len(self.sol.routes) == 0:
-            return None
-        else:
-            return self.sol.routes[-1]
-
-    def IdentifyBestInsertion(self, bestInsertion, rt):
-        for i in range(0, len(self.customers)):
-            candidateCust:Node = self.customers[i]
-            if candidateCust.isRouted is False:
-                if rt.load + candidateCust.demand <= rt.capacity:
-                    lastNodePresentInTheRoute = rt.sequenceOfNodes[-2]
-                    # lastNodePresentInTheRoute = rt.sequenceOfNodes[-1]
-                    trialCost = self.distanceMatrix[lastNodePresentInTheRoute.ID][candidateCust.ID]
-                    if trialCost < bestInsertion.cost:
-                        bestInsertion.customer = candidateCust
-                        bestInsertion.route = rt
-                        bestInsertion.cost = trialCost
-
-    def ApplyCustomerInsertion(self, insertion):
-        insCustomer = insertion.customer
-        rt = insertion.route
-        #before the second depot occurrence
-        insIndex = len(rt.sequenceOfNodes) - 1
-        # now insIndex = len(rt.sequenceOfNodes) 
-        rt.sequenceOfNodes.insert(insIndex, insCustomer)
-
-        beforeInserted = rt.sequenceOfNodes[-3]
-        # now beforeInserted = rt.sequenceOfNodes[-2]
-
-        costAdded = self.distanceMatrix[beforeInserted.ID][insCustomer.ID] + self.distanceMatrix[insCustomer.ID][self.depot.ID]
-        # now costAdded = self.distanceMatrix[beforeInserted.ID][insCustomer.ID] 
-        costRemoved = self.distanceMatrix[beforeInserted.ID][self.depot.ID]
-        #  now maybe we dont need that
-
-        rt.cost += costAdded - costRemoved
-        #  now maybe we dont need that
-        self.sol.cost += costAdded - costRemoved
-        #  now maybe we dont need that
-        rt.load += insCustomer.demand
-
-        insCustomer.isRouted = True
 
     def StoreBestRelocationMove(self, originRouteIndex, originNodeIndex, targetRouteIndex, targetNodeIndex, originRtCostChange, targetRtCostChange, moveCost, rm:RelocationMove):
         rm.originRoutePosition = originRouteIndex
@@ -755,7 +588,7 @@ class Emm_Emm_Solver:
             rtLoad = 0
             rtCost , rtLoad = self.calculate_route_details(rt.sequenceOfNodes)
             if abs(rtCost - rt.cost) > 0.0001:
-                print ('Route Cost problem')
+                print ('Route Cost problem for route ' + str(r))
             if abs(rtLoad - rt.load) > 0.0001:
                 print ('Route Load problem')
 
@@ -763,3 +596,15 @@ class Emm_Emm_Solver:
 
         if abs(totalSolCost - self.sol.cost) > 0.0001:
             print('Solution Cost problem')
+
+    def transport_solution_to_txt(self):
+        file = open('emm_emm_solution.txt', 'w')
+        file.write('Cost:\n')
+        file.write(str(self.sol.cost) + '\n')
+        file.write('Routes:\n')
+        file.write(str(len(self.sol.routes)) + '\n')
+        for rt in self.sol.routes:
+            file.write(str(rt.sequenceOfNodes[0].ID))
+            for i in range(1, len(rt.sequenceOfNodes)):
+                file.write(',' + str(rt.sequenceOfNodes[i].ID))
+            file.write('\n')

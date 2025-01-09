@@ -104,3 +104,12 @@ class Route:
         self.capacity = cap
         self.load = 0
         self.cumulative_load = []
+
+    def copy(self):
+        copy_route = Route(self.sequenceOfNodes[0], self.capacity)
+        copy_route.sequenceOfNodes.pop(-1)
+        for i in range (1, len(self.sequenceOfNodes)):
+            copy_route.sequenceOfNodes.append(self.sequenceOfNodes[i])
+        copy_route.cost = self.cost
+        copy_route.load = self.load
+        return copy_route

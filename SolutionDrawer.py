@@ -20,7 +20,6 @@ class SolDrawer:
             n = nodes[i]
             x.append(n.x)
             y.append(n.y)
-            plt.annotate(n.ID, (n.x, n.y), textcoords="offset points", xytext=(5, 5), ha='center')
         plt.scatter(x, y, c="blue")
 
     @staticmethod

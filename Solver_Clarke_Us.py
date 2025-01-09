@@ -14,6 +14,9 @@ class Solver_Clarke_Us:
         for route in self.sol.routes :
             route.sequenceOfNodes.pop(-1)
             cost, load = calculate_route_details(route.sequenceOfNodes, self.empty_vehicle_weight)
+            #forgot to change route cost and load
+            route.cost = cost
+            route.load = load
             self.sol.cost += cost
         self.transport_solution_to_txt()
         return self.sol
