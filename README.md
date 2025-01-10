@@ -1,2 +1,2 @@
-Current Best: 37339.420588760455
-Draft Routing with VND Logic, Relocation then Two Opt
+Current Best: 37122.274917257106
+Emm&Emm with VND Logic, Two Opt then Relocation
