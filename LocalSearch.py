@@ -72,7 +72,7 @@ class TwoOptMove(object):
         self.positionOfSecondRoute = None
         self.positionOfFirstNode = None
         self.positionOfSecondNode = None
-        self.moveCost = 10 ** 9
+        self.moveCost = -10 ** 9
 
 # Local Search 
 class LocalSolver():
@@ -89,9 +89,13 @@ class LocalSolver():
     def LocalSolve(self, sol):
         self.sol = sol
         self.ReportSolution(sol)
+        print('Two Opt Local Search')
+        self.LocalSearch(2)
+        print('Relocation Local Search')
         self.LocalSearch(0)
+        print('Two Opt Local Search')
+        self.LocalSearch(2)
         self.ReportSolution(sol)
-        self.transport_solution_to_txt()
         return self.sol
 
     def LocalSearch(self, operator):
@@ -126,7 +130,7 @@ class LocalSolver():
             elif operator == 2:
                 self.FindBestTwoOptMove(top)
                 if top.positionOfFirstRoute is not None:
-                    if top.moveCost < 0:
+                    if top.moveCost > 0:
                         self.ApplyTwoOptMove(top)
                     else:
                         terminationCondition = True
@@ -214,7 +218,7 @@ class LocalSolver():
                             # rt2copy.cost, rt2copy.load = self.calculate_route_details(rt2copy.sequenceOfNodes)
                             # rt2newcost = rt2copy.cost
                             # newcost = rt1newcost + rt2newcost
-                            originRtCostChange, targetRtCostChange = self.calculate_alternative_cost(rt1, rt2, originNodeIndex, targetNodeIndex)
+                            originRtCostChange, targetRtCostChange = self.calculate_relocation_cost(rt1, rt2, originNodeIndex, targetNodeIndex)
                             # altcost = originRtCostChange + targetRtCostChange
                             # difference = oldcost - newcost - altcost
                             # difference = round(difference, 10)
@@ -246,7 +250,7 @@ class LocalSolver():
             tot_load -= to_node.demand
         return tn_km , tot_dem
     
-    def calculate_alternative_cost(self, originRoute, targetRoute, originNodeIndex, targetNodeIndex):
+    def calculate_relocation_cost(self, originRoute, targetRoute, originNodeIndex, targetNodeIndex):
         originRtCostChange = 0
         targetRtCostChange = 0
         originNode = originRoute.sequenceOfNodes[originNodeIndex]
@@ -283,6 +287,7 @@ class LocalSolver():
         sum_routes += self.distanceMatrix[targetNode.ID][originNode.ID]
         targetRtCostChange += -1*sum_routes*originNode.demand
 
+        #if target is not last
         if targetNodeIndex != len(targetRoute.sequenceOfNodes) - 1:
             F = targetRoute.sequenceOfNodes[targetNodeIndex]
             B = originRoute.sequenceOfNodes[originNodeIndex]
@@ -330,39 +335,35 @@ class LocalSolver():
                         costChangeSecondRoute = None
 
                         if rt1 == rt2:
-                            if firstNodeIndex == secondNodeIndex - 1:
-                                # case of consecutive nodes swap
-                                costRemoved = self.distanceMatrix[a1.ID][b1.ID] + self.distanceMatrix[b1.ID][b2.ID] + \
-                                              self.distanceMatrix[b2.ID][c2.ID]
-                                costAdded = self.distanceMatrix[a1.ID][b2.ID] + self.distanceMatrix[b2.ID][b1.ID] + \
-                                            self.distanceMatrix[b1.ID][c2.ID]
-                                moveCost = costAdded - costRemoved
-                            else:
-
-                                costRemoved1 = self.distanceMatrix[a1.ID][b1.ID] + self.distanceMatrix[b1.ID][c1.ID]
-                                costAdded1 = self.distanceMatrix[a1.ID][b2.ID] + self.distanceMatrix[b2.ID][c1.ID]
-                                costRemoved2 = self.distanceMatrix[a2.ID][b2.ID] + self.distanceMatrix[b2.ID][c2.ID]
-                                costAdded2 = self.distanceMatrix[a2.ID][b1.ID] + self.distanceMatrix[b1.ID][c2.ID]
-                                moveCost = costAdded1 + costAdded2 - (costRemoved1 + costRemoved2)
+                            oldcost = rt1.cost
+                            rtcopy = rt1.copy()
+                            first = rtcopy.sequenceOfNodes[firstNodeIndex]
+                            second = rtcopy.sequenceOfNodes[secondNodeIndex]
+                            rtcopy.insert(firstNodeIndex, first)
+                            rtcopy.pop(firstNodeIndex + 1)
+                            rtcopy.insert(secondNodeIndex, second)
+                            rtcopy.pop(secondNodeIndex + 1)
+                            rtcopy.cost, rtcopy.load = self.calculate_route_details(rtcopy.sequenceOfNodes)
+                            newcost = rtcopy.cost
+                            originRtCostChange = oldcost - newcost
+                            targetRtCostChange = originRtCostChange
                         else:
                             if rt1.load - b1.demand + b2.demand > self.capacity:
                                 continue
                             if rt2.load - b2.demand + b1.demand > self.capacity:
                                 continue
 
-                            costRemoved1 = self.distanceMatrix[a1.ID][b1.ID] + self.distanceMatrix[b1.ID][c1.ID]
-                            costAdded1 = self.distanceMatrix[a1.ID][b2.ID] + self.distanceMatrix[b2.ID][c1.ID]
-                            costRemoved2 = self.distanceMatrix[a2.ID][b2.ID] + self.distanceMatrix[b2.ID][c2.ID]
-                            costAdded2 = self.distanceMatrix[a2.ID][b1.ID] + self.distanceMatrix[b1.ID][c2.ID]
+                            originRtCostChange, targetRtCostChange = self.calculate_swap_cost(firstRouteIndex, secondRouteIndex, firstNodeIndex, secondNodeIndex)
 
-                            costChangeFirstRoute = costAdded1 - costRemoved1
-                            costChangeSecondRoute = costAdded2 - costRemoved2
-
-                            moveCost = costAdded1 + costAdded2 - (costRemoved1 + costRemoved2)
+                            
 
                         if moveCost < sm.moveCost:
                             self.StoreBestSwapMove(firstRouteIndex, secondRouteIndex, firstNodeIndex, secondNodeIndex,
                                                    moveCost, costChangeFirstRoute, costChangeSecondRoute, sm)
+
+    def calculate_swap_cost(self, firstRouteIndex, secondRouteIndex, firstNodeIndex, secondNodeIndex):
+        #Calculating move cost for origin route
+        originRtCostChange = 0
 
     def ApplyRelocationMove(self, rm: RelocationMove):
 
@@ -480,18 +481,13 @@ class LocalSolver():
                     for nodeInd2 in range(start2, len(rt2.sequenceOfNodes)):
                         moveCost = 10 ** 9
 
-                        A = rt1.sequenceOfNodes[nodeInd1]
-                        B = rt1.sequenceOfNodes[nodeInd1 + 1]
-                        K = rt2.sequenceOfNodes[nodeInd2]
-                        L = rt2.sequenceOfNodes[nodeInd2 + 1]
+                        # A = rt1.sequenceOfNodes[nodeInd1]
+                        # B = rt1.sequenceOfNodes[nodeInd1 + 1]
+                        # K = rt2.sequenceOfNodes[nodeInd2]
+                        # L = rt2.sequenceOfNodes[nodeInd2 + 1]
 
                         if rt1 == rt2:
-                            # if nodeInd1 == 0 and nodeInd2 == len(rt1.sequenceOfNodes) - 2:
-                            if nodeInd1 == 0 and nodeInd2 == len(rt1.sequenceOfNodes) - 1:
-                                continue
-                            costAdded = self.distanceMatrix[A.ID][K.ID] + self.distanceMatrix[B.ID][L.ID]
-                            costRemoved = self.distanceMatrix[A.ID][B.ID] + self.distanceMatrix[K.ID][L.ID]
-                            moveCost = costAdded - costRemoved
+                            continue #suppress same route two opt just to test different route two opt
                         else:
                             if nodeInd1 == 0 and nodeInd2 == 0:
                                 continue
@@ -501,10 +497,8 @@ class LocalSolver():
 
                             if self.CapacityIsViolated(rt1, nodeInd1, rt2, nodeInd2):
                                 continue
-                            costAdded = self.distanceMatrix[A.ID][L.ID] + self.distanceMatrix[B.ID][K.ID]
-                            costRemoved = self.distanceMatrix[A.ID][B.ID] + self.distanceMatrix[K.ID][L.ID]
-                            moveCost = costAdded - costRemoved
-                        if moveCost < top.moveCost:
+                            moveCost = self.calculate_two_opt_cost(rtInd1, rtInd2, nodeInd1, nodeInd2)
+                        if moveCost > top.moveCost:
                             self.StoreBestTwoOptMove(rtInd1, rtInd2, nodeInd1, nodeInd2, moveCost, top)
 
     def CapacityIsViolated(self, rt1, nodeInd1, rt2, nodeInd2):
@@ -528,12 +522,62 @@ class LocalSolver():
 
         return False
 
+    def calculate_two_opt_cost(self, rtInd1, rtInd2, nodeInd1, nodeInd2):
+        moveCost = 0
+        rt1 = self.sol.routes[rtInd1]
+        rt2 = self.sol.routes[rtInd2]
+        sum_routes_1 = 0
+        sum_routes_2 = 0
+        sum_demands_1 = 0
+        sum_demands_2 = 0
+        for i in range(0, nodeInd1):
+            n1 = rt1.sequenceOfNodes[i]
+            n2 = rt1.sequenceOfNodes[i+1]
+            sum_routes_1 += self.distanceMatrix[n1.ID][n2.ID]
+
+        for i in range(nodeInd1 + 1, len(rt1.sequenceOfNodes)):
+            n = rt1.sequenceOfNodes[i]
+            sum_demands_1 += n.demand
+
+        for i in range(0, nodeInd2):
+            n1 = rt2.sequenceOfNodes[i]
+            n2 = rt2.sequenceOfNodes[i+1]
+            sum_routes_2 += self.distanceMatrix[n1.ID][n2.ID] 
+
+        for i in range(nodeInd2 + 1, len(rt2.sequenceOfNodes)):
+            n = rt2.sequenceOfNodes[i]
+            sum_demands_2 += n.demand
+
+        #could include if statement to make sure that these are not calculated if nodeIndx = 0
+        moveCost += sum_routes_1 * (sum_demands_1 - sum_demands_2)
+        moveCost += sum_routes_2 * (sum_demands_2 - sum_demands_1)
+
+        if nodeInd1 != len(rt1.sequenceOfNodes) - 1:
+            B = rt1.sequenceOfNodes[nodeInd1]
+            C = rt1.sequenceOfNodes[nodeInd1 + 1]
+            G = rt2.sequenceOfNodes[nodeInd2]
+            old_route_1 = self.distanceMatrix[B.ID][C.ID]
+            new_route_1 = self.distanceMatrix[G.ID][C.ID]
+            w = self.empty_vehicle_weight
+            moveCost += (old_route_1 - new_route_1)*(sum_demands_1 + w)
+
+        if nodeInd2 != len(rt2.sequenceOfNodes) - 1:
+            B = rt1.sequenceOfNodes[nodeInd1]
+            G = rt2.sequenceOfNodes[nodeInd2]
+            H = rt2.sequenceOfNodes[nodeInd2 + 1]
+            old_route_2 = self.distanceMatrix[G.ID][H.ID]
+            new_route_2 = self.distanceMatrix[B.ID][H.ID]
+            w = self.empty_vehicle_weight
+            moveCost += (old_route_2 - new_route_2)*(sum_demands_2 + w)
+
+        return moveCost
+
     def StoreBestTwoOptMove(self, rtInd1, rtInd2, nodeInd1, nodeInd2, moveCost, top):
         top.positionOfFirstRoute = rtInd1
         top.positionOfSecondRoute = rtInd2
         top.positionOfFirstNode = nodeInd1
         top.positionOfSecondNode = nodeInd2
-        top.moveCost = moveCost
+        top.moveCost = moveCost 
 
     def ApplyTwoOptMove(self, top):
         rt1:Route = self.sol.routes[top.positionOfFirstRoute]
@@ -564,10 +608,12 @@ class LocalSolver():
             rt1.sequenceOfNodes.extend(relocatedSegmentOfRt2)
             rt2.sequenceOfNodes.extend(relocatedSegmentOfRt1)
 
-            self.UpdateRouteCostAndLoad(rt1)
-            self.UpdateRouteCostAndLoad(rt2)
+            # self.UpdateRouteCostAndLoad(rt1)
+            # self.UpdateRouteCostAndLoad(rt2)
+            rt1.cost, rt1.load = self.calculate_route_details(rt1.sequenceOfNodes)
+            rt2.cost, rt2.load = self.calculate_route_details(rt2.sequenceOfNodes)
 
-        self.sol.cost += top.moveCost
+        self.sol.cost -= top.moveCost
 
     def UpdateRouteCostAndLoad(self, rt: Route):
         tc = 0
