@@ -89,20 +89,15 @@ class LocalSolver():
     def LocalSolve(self, sol):
         self.sol = sol
         self.ReportSolution(sol)
-        print('Two Opt Local Search')
-        self.LocalSearch(2)
-        print('Relocation Local Search')
-        self.LocalSearch(0)
-        print('Two Opt Local Search')
-        self.LocalSearch(2)
+        self.LocalSearch()
         self.ReportSolution(sol)
         return self.sol
-
-    def LocalSearch(self, operator):
+    
+    def LocalSearch(self):
         self.bestSolution = self.cloneSolution(self.sol)
         terminationCondition = False
         localSearchIterator = 0
-
+        operator = 2
         rm = RelocationMove()
         sm = SwapMove()
         top = TwoOptMove()
@@ -117,6 +112,7 @@ class LocalSolver():
                 self.FindBestRelocationMove(rm)
                 if rm.moveCost > 0:
                     self.ApplyRelocationMove(rm)
+                    operator = 0
                 else:
                     terminationCondition = True
             # Swaps
@@ -132,8 +128,9 @@ class LocalSolver():
                 if top.positionOfFirstRoute is not None:
                     if top.moveCost > 0:
                         self.ApplyTwoOptMove(top)
+                        operator = 2
                     else:
-                        terminationCondition = True
+                        operator = 0
 
             self.TestSolution()
 
@@ -487,11 +484,18 @@ class LocalSolver():
                         # L = rt2.sequenceOfNodes[nodeInd2 + 1]
 
                         if rt1 == rt2:
-                            continue #suppress same route two opt just to test different route two opt
+                            oldcost = rt1.cost
+                            rtcopy = rt1.copy()
+                            # reverses the nodes in the segment [positionOfFirstNode + 1,  top.positionOfSecondNode]
+                            reversedSegment = reversed(rt1.sequenceOfNodes[nodeInd1 + 1: nodeInd2 + 1])
+                            rtcopy.sequenceOfNodes[nodeInd1 + 1 : nodeInd2 + 1] = reversedSegment
+                            newcost, load = self.calculate_route_details(rtcopy.sequenceOfNodes)
+                            
+                            moveCost = oldcost - newcost
                         else:
                             if nodeInd1 == 0 and nodeInd2 == 0:
                                 continue
-                            # if nodeInd1 == len(rt1.sequenceOfNodes) - 2 and  nodeInd2 == len(rt2.sequenceOfNodes) - 2:
+            
                             if nodeInd1 == len(rt1.sequenceOfNodes) - 1 and  nodeInd2 == len(rt2.sequenceOfNodes) - 1:
                                 continue
 
@@ -593,7 +597,7 @@ class LocalSolver():
             #reversedSegmentList = list(reversed(rt1.sequenceOfNodes[top.positionOfFirstNode + 1: top.positionOfSecondNode + 1]))
             #rt1.sequenceOfNodes[top.positionOfFirstNode + 1: top.positionOfSecondNode + 1] = reversedSegmentList
 
-            rt1.cost += top.moveCost
+            rt1.cost -= top.moveCost
 
         else:
             #slice with the nodes from position top.positionOfFirstNode + 1 onwards
