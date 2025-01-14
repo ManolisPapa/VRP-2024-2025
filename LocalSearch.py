@@ -87,7 +87,7 @@ class ThreeOptMove(object):
 
 # Local Search 
 class LocalSolver():
-    def __init__(self, m):
+    def __init__(self, m, seed):
         self.allNodes = m.allNodes
         self.customers = m.customers
         self.depot = m.allNodes[0]
@@ -98,6 +98,7 @@ class LocalSolver():
         self.bestSolution = None
         self.minTabuTenure = 20
         self.maxTabuTenure = 30
+        self.seed = seed
 
     def LocalSolve(self, sol):
         self.sol = sol
@@ -108,7 +109,7 @@ class LocalSolver():
     
     def LocalSearch(self):
         self.bestSolution = self.cloneSolution(self.sol)
-        terminationCondition = False
+        
         localSearchIterator = 0
         rm = RelocationMove()
         sm = SwapMove()
@@ -118,8 +119,9 @@ class LocalSolver():
         top_moves = 0
         throp_moves = 0
         operator = 0
+        random.seed(self.seed)
 
-        for localSearchIterator in range(2000):
+        for localSearchIterator in range(1500):
         
             self.InitializeOperators(rm, sm, top, throp)
             # if localSearchIterator == 0:
